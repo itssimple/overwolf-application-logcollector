@@ -1,5 +1,6 @@
 ﻿using System;
 using System.IO;
+using System.IO.Compression;
 using System.Security.AccessControl;
 using System.Security.Principal;
 
@@ -14,22 +15,47 @@ namespace Overwolf.Application.LogCollector
             overwolfAppLogFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Overwolf", "Log", "Apps");
         }
 
-        internal string[] GetCurrentLogfiles(string appName)
+        public string ZipLogFiles(string appName)
         {
-            ValidateValidAppName(appName, out var logFilePath);
-            var logFiles = Directory.GetFiles(logFilePath, "*.*", SearchOption.AllDirectories);
+            GetCurrentLogfiles(appName, out var rootLogFolder);
+
+            var tempFile = Path.GetTempFileName();
+            // Deleting the file, so I can overwrite it
+            File.Delete(tempFile);
+
+            ZipFile.CreateFromDirectory(rootLogFolder, tempFile, CompressionLevel.NoCompression, false);
+
+            File.Move(tempFile, tempFile.Replace(".tmp", ".zip"));
+
+            return tempFile.Replace(".tmp", ".zip");
+        }
+
+        internal string[] GetCurrentLogfiles(string appName, out string rootLogFolder)
+        {
+            ValidateValidAppName(appName, out rootLogFolder);
+            var logFiles = Directory.GetFiles(rootLogFolder, "*.*", SearchOption.AllDirectories);
 
             return logFiles;
         }
 
         internal void ValidateValidAppName(string appName, out string logFilePath)
         {
+            if (string.IsNullOrWhiteSpace(appName))
+            {
+                throw new InvalidPathException("You need to specify the appName.");
+            }
+
             var newPath = Path.Combine(overwolfAppLogFolder, appName);
             var parsedPath = Path.GetFullPath(newPath);
 
             if (!parsedPath.Contains(overwolfAppLogFolder))
             {
                 throw new InvalidPathException("You're trying to access a folder, that this plugin was not meant to access.");
+            }
+
+            if (parsedPath == overwolfAppLogFolder)
+            {
+                throw new InvalidPathException("You're trying to access the app folder, you need to access a specific app folder.");
             }
 
             if (!Directory.Exists(parsedPath))
