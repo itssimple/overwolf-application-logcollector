@@ -15,7 +15,7 @@ namespace Overwolf.Application.LogCollector
             overwolfAppLogFolder = Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData), "Overwolf", "Log", "Apps");
         }
 
-        public string ZipLogFiles(string appName)
+        public string ZipLogFiles(string appName, Action<string> callback = null)
         {
             GetCurrentLogfiles(appName, out var rootLogFolder);
 
@@ -26,6 +26,8 @@ namespace Overwolf.Application.LogCollector
             ZipFile.CreateFromDirectory(rootLogFolder, tempFile, CompressionLevel.NoCompression, false);
 
             File.Move(tempFile, tempFile.Replace(".tmp", ".zip"));
+
+            callback?.Invoke(tempFile.Replace(".tmp", ".zip"));
 
             return tempFile.Replace(".tmp", ".zip");
         }
